@@ -147,7 +147,7 @@ gp.db = function() {
 		get: function() {
 			
 			var table = this.table;
-			var transaction = connection.transaction([table], 'readwrite');
+			var transaction = connection.transaction([table], 'readonly');
 			var storage = transaction.objectStore(table);
 			
 			var keyRange = IDBKeyRange.lowerBound(0);
