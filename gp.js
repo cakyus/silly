@@ -104,7 +104,8 @@ gp.db = function() {
 	};
 	
 	/**
-	 * Database storage
+	 * Database storage, emulate IDBObjectStore
+	 * @see https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore
 	 **/
 	
 	this.storage = {
@@ -144,7 +145,23 @@ gp.db = function() {
 			return key;
 		},
 		
-		get: function() {
+		get: function(key) {
+			
+			var table = this.table;
+			var transaction = connection.transaction([table], 'readwrite');
+			var storage = transaction.objectStore(table);
+			var request = storage.get(key);
+			
+			request.onsuccess = function(e) {
+				console.log(request.result);
+			};
+			
+			request.onerror = function(e) {
+				console.error(e.value);
+			};
+		},
+		
+		getAll: function() {
 			
 			var table = this.table;
 			var transaction = connection.transaction([table], 'readonly');

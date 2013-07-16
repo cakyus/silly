@@ -9,9 +9,9 @@ db.open('com.google.plus')
 	var storage = db.storage.open('todo');
 	// add new record
 	var id = storage.put('Hello');
+	// show a record
+	storage.get(id);
 	// delete record
 	storage.del(id);
-	// show all record
-	storage.get();
 });
 
