@@ -1,0 +1,2 @@
+Simplified IndexedDB Library
+============================

@@ -1,0 +1,11 @@
+config.php
+
+# EDITORS
+# -------
+
+# Geany
+*.geany
+
+# Komodo Edit
+*.komodoproject
+.komodotools
