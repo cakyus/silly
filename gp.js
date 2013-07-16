@@ -22,6 +22,18 @@ gp.db = function() {
 	 **/
 	
 	var connection = null;
+	var databaseInstance = this;
+	
+	/**
+	 * Status
+	 * 
+	 * 0 - not connected
+	 * 1 - connecting
+	 * 2 - connected
+	 * 3 - failure
+	 **/
+	
+	var state = 0;
 	
 	/**
 	 * Connect success handler
@@ -52,25 +64,29 @@ gp.db = function() {
 	};
 	
 	/**
-	 * Open database connection
+	 * Open database
 	 **/
 	
 	this.open = function(database) {
+		
+		console.info('connecting to database "'+database+'"');
 		
 		var request = indexedDB.open(
 			  database
 			, schema.version
 			);
 			
+		state = 1; // connecting
+		
 		request.onsuccess = function(e) {
-			console.info('database "'+database+'" is opened');
 			connection = request.result;
-			success_trigger();
+			state = 2; // connected
+			console.info('database "'+database+'" is opened');
 		};
 		
 		request.onerror = function(e) {
+			state = 3; // failure
 			console.error(e.value);
-			fail_trigger();
 		};
 		
 		request.onupgradeneeded = function(e) {
@@ -107,17 +123,37 @@ gp.db = function() {
 	 * Database storage, emulate IDBObjectStore
 	 * @see https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore
 	 **/
-	
+	 
 	this.storage = {
 		
 		table: null,
 		
 		open: function(table) {
+			
 			this.table = table;
+			
+			if (state == 1){
+				setTimeout(function() {
+					databaseInstance.storage.open(table);
+				}, 200);
+				return this;
+			}
+			
+			if (state != 2){
+				console.error('database is not opened. state = '+state);
+			}
+			
 			return this;
 		},
 		
 		put: function(object, key) {
+			
+			if (state == 1){
+				setTimeout(function() {
+					databaseInstance.storage.put(object, key);
+				}, 200);
+				return this;
+			}
 			
 			var table = this.table;
 			var transaction = connection.transaction([table], 'readwrite');
@@ -217,5 +253,7 @@ gp.db = function() {
 			
 		}
 	};
+	
+	return this;
 };
 
