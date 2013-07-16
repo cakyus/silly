@@ -8,7 +8,7 @@ gp.db = function() {
 	 **/
 	 
 	var schema = {
-		version: 7,
+		version: 10,
 		tables: {
 			 name: 'todo'
 			,primaryKeys: {
@@ -112,17 +112,22 @@ gp.db = function() {
 		table: null,
 		
 		open: function(table) {
-			console.log(connection);
 			this.table = table;
 			return this;
 		},
 		
-		put: function(object) {
+		put: function(object, key) {
 			
 			var table = this.table;
 			var transaction = connection.transaction([table], 'readwrite');
 			var storage = transaction.objectStore(table);
-			var key = (new Date()).getTime();
+			
+			if (key == null){
+				// @todo key should be unique
+				//		 time() is always unique in all cases
+				key = (new Date()).getTime();
+			}
+			
 			var request = storage.put({
 				object: object,
 				timestamp: key
@@ -170,15 +175,15 @@ gp.db = function() {
 		 * Delete a record in the table
 		 **/
 		
-		del: function(id) {
+		del: function(key) {
 			
 			var table = this.table;
 			var transaction = connection.transaction([table], 'readwrite');
 			var storage = transaction.objectStore(table);
-			var request = storage.delete(id);
+			var request = storage.delete(key);
 			
 			request.onsuccess = function(e) {
-				console.info('successfully delete '+id+' from "'+table+'"');
+				console.info('successfully delete '+key+' from "'+table+'"');
 				// @todo do something
 			};
 			
