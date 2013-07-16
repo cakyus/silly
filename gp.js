@@ -1,123 +1,14 @@
 
 var gp = {};
 
-//gp.db = {
-	
-	//connection: null,
-	
-	//success: function() {
-		
-	//},
-
-	//open: function(database, table, callback) {
-		
-		//var version = 2;
-		//var request = indexedDB.open(database, version);
-		
-		//request.onsuccess = function(e) {
-			//console.info('successfully open database "'+database+'"');
-			//gp.db.connection = request.result;
-			//callback();
-		//};
-		
-		//request.onerror = function(e) {
-			//console.error(e.value);
-		//};
-		
-		//request.onupgradeneeded = function(e) {
-			
-			//console.info('upgrading database "'+database+'"');
-			
-			//var db = e.target.result;
-			
-			//e.target.transaction.onerror = function(e) {
-				//console.error(e.value);
-			//};
-			
-			//if (db.objectStoreNames.contains(table)){
-				//db.deleteObjectStore(table);
-			//}
-			
-			//var storage = db.createObjectStore(table, {
-				//keyPath: 'timestamp'
-			//});
-		//};
-		
-		//return this;
-	//},
-	
-	//put: function(table, object, callback) {
-		
-		//var db = gp.db.connection;
-		//var transaction = db.transaction([table], 'readwrite');
-		//var storage = transaction.objectStore(table);
-		//var request = storage.put({
-			//object: object,
-			//timestamp: (new Date()).getTime()
-		//});
-		
-		//request.onsuccess = function(e) {
-			//console.info('successfully save object in "'+table+'"');
-			//callback();
-		//};
-		
-		//request.onerror = function(e) {
-			//console.error(e.value);
-		//};
-	//},
-	
-	//get: function(table) {
-		
-		//var db = gp.db.connection;
-		//var transaction = db.transaction([table], 'readwrite');
-		//var storage = transaction.objectStore(table);
-		
-		//var keyRange = IDBKeyRange.lowerBound(0);
-		//var cursorRequest = storage.openCursor(keyRange);
-		
-		//cursorRequest.onsuccess = function(e) {
-			
-			//var result = e.target.result;
-			
-			//if (!!result == false){
-				//return false;
-			//}
-			
-			//console.log(result.value);;
-			
-			//result.continue();
-		//};
-		
-		//cursorRequest.onerror = function(e) {
-			//console.error(e.value);
-		//}
-		
-	//},
-	
-	//del: function(table, id) {
-		
-		//var db = gp.db.connection;
-		//var transaction = db.transaction([table], 'readwrite');
-		//var storage = transaction.objectStore(table);
-		//var request = storage.delete(id);
-		
-		//request.onsuccess = function(e) {
-			//console.info('successfully delete '+id+' from "'+table+'"');
-			
-			//// @todo do somtehing
-		//};
-		
-		//request.onerror = function(e) {
-			//console.error(e.value);
-		//};
-	//}
-	
-//};
-
 gp.db = function() {
 	
-	this.schema = {
-		version: 6,
+	/**
+	 * Database schema
+	 **/
+	 
+	var schema = {
+		version: 7,
 		tables: {
 			 name: 'todo'
 			,primaryKeys: {
@@ -126,41 +17,51 @@ gp.db = function() {
 		}
 	};
 	
-	this.connection = null;
+	/**
+	 * Connection handler
+	 **/
 	
-	var success_callback = null;
+	var connection = null;
 	
-	this.success = function(callback) {
-		success_callback = callback;
-	}
+	/**
+	 * Connect success handler
+	 **/
 	
-	this.success_trigger = function() {
+	var success_callback = null;	
+	var success_trigger = function() {
 		if (success_callback != null){
 			success_callback();
 		}
 	};
-	
-	this.fail = function(callback) {
-		if (arguments.length == 0){
-			return false;
-		}
-		if (this.connection != null){
-			return false;
-		}
-		callback();
-		return this;
+	this.success = function(callback) {
+		success_callback = callback;
 	};
+	
+	/**
+	 * Connect fail handler
+	 **/
+	
+	var fail_callback = null;
+	var fail_trigger = function() {
+		if (fail_callback != null){
+			fail_callback();
+		}
+	};
+	this.fail = function(callback) {
+		fail_callback = callback;
+	};
+	
+	/**
+	 * Open database connection
+	 **/
 	
 	this.open = function(database) {
 		
 		var request = indexedDB.open(
 			  database
-			, (new gp.db).schema.version
+			, schema.version
 			);
 			
-		connection = this.connection;
-		success_trigger = this.success_trigger;
-		
 		request.onsuccess = function(e) {
 			console.info('database "'+database+'" is opened');
 			connection = request.result;
@@ -169,7 +70,7 @@ gp.db = function() {
 		
 		request.onerror = function(e) {
 			console.error(e.value);
-			this.fail;
+			fail_trigger();
 		};
 		
 		request.onupgradeneeded = function(e) {
@@ -182,7 +83,7 @@ gp.db = function() {
 				console.error(e.value);
 			};
 			
-			var tables = (new gp.db).schema.tables;
+			var tables = schema.tables;
 			
 			for (i = 0; i < tables.length; i++){
 				
@@ -202,18 +103,97 @@ gp.db = function() {
 		return this;
 	};
 	
-	this.storage = function() {
+	/**
+	 * Database storage
+	 **/
+	
+	this.storage = {
 		
-		this.table = null;
+		table: null,
 		
-		this.open = function(table) {
+		open: function(table) {
+			console.log(connection);
 			this.table = table;
 			return this;
-		};
+		},
 		
-		this.put = function() {
-			console.log(this.table);
-		};
+		put: function(object) {
+			
+			var table = this.table;
+			var transaction = connection.transaction([table], 'readwrite');
+			var storage = transaction.objectStore(table);
+			var key = (new Date()).getTime();
+			var request = storage.put({
+				object: object,
+				timestamp: key
+			});
+			
+			request.onsuccess = function(e) {
+				console.info('successfully save object in "'+table+'"');
+			};
+			
+			request.onerror = function(e) {
+				console.error(e.value);
+			};
+			
+			return key;
+		},
+		
+		get: function() {
+			
+			var table = this.table;
+			var transaction = connection.transaction([table], 'readwrite');
+			var storage = transaction.objectStore(table);
+			
+			var keyRange = IDBKeyRange.lowerBound(0);
+			var cursorRequest = storage.openCursor(keyRange);
+			
+			cursorRequest.onsuccess = function(e) {
+				
+				var result = e.target.result;
+				
+				if (!!result == false){
+					return false;
+				}
+				
+				console.log(result.value);;
+				
+				result.continue();
+			};
+			
+			cursorRequest.onerror = function(e) {
+				console.error(e.value);
+			}
+		},
+		
+		/**
+		 * Delete a record in the table
+		 **/
+		
+		del: function(id) {
+			
+			var table = this.table;
+			var transaction = connection.transaction([table], 'readwrite');
+			var storage = transaction.objectStore(table);
+			var request = storage.delete(id);
+			
+			request.onsuccess = function(e) {
+				console.info('successfully delete '+id+' from "'+table+'"');
+				// @todo do something
+			};
+			
+			request.onerror = function(e) {
+				console.error(e.value);
+			};
+		},
+		
+		/**
+		 * Delete all record from table
+		 **/
+		
+		clear: function() {
+			
+		}
 	};
 };
 
