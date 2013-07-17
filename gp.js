@@ -1,7 +1,7 @@
 
 var gp = {};
 
-gp.db = function() {
+gp.db = function(database, storage) {
 	
 	/**
 	 * Database schema
@@ -22,7 +22,7 @@ gp.db = function() {
 	 **/
 	
 	var connection = null;
-	var databaseInstance = this;
+	var objectDatabase = this;
 	
 	/**
 	 * Status
@@ -30,228 +30,92 @@ gp.db = function() {
 	 * 0 - not connected
 	 * 1 - connecting
 	 * 2 - connected
-	 * 3 - failure
 	 **/
 	
 	var state = 0;
 	
-	/**
-	 * Connect success handler
-	 **/
+	// input validation
 	
-	var success_callback = null;	
-	var success_trigger = function() {
-		if (success_callback != null){
-			success_callback();
-		}
-	};
-	this.success = function(callback) {
-		success_callback = callback;
-	};
+	if (database == null){
+		console.error('database must be specified');
+		return this;
+	} else if (storage == null){
+		console.error('table must be specified');
+		return this;
+	}
 	
-	/**
-	 * Connect fail handler
-	 **/
+	// opening database
 	
-	var fail_callback = null;
-	var fail_trigger = function() {
-		if (fail_callback != null){
-			fail_callback();
-		}
-	};
-	this.fail = function(callback) {
-		fail_callback = callback;
+	console.info('connecting to database "'+database+'"');
+	
+	state = 1;
+	var request = indexedDB.open(
+		  database
+		, schema.version
+		);
+	
+	request.onsuccess = function(e) {
+		connection = request.result;
+		state = 2; // connected
+		console.info('database "'+database+'" is opened');
 	};
 	
-	/**
-	 * Open database
-	 **/
+	request.onerror = function(e) {
+		state = 0; // failure
+		console.error(e.value);
+	};
 	
-	this.open = function(database) {
+	request.onupgradeneeded = function(e) {
 		
-		console.info('connecting to database "'+database+'"');
+		console.info('upgrading database "'+database+'"');
 		
-		var request = indexedDB.open(
-			  database
-			, schema.version
-			);
-			
-		state = 1; // connecting
+		var db = e.target.result;
 		
-		request.onsuccess = function(e) {
-			connection = request.result;
-			state = 2; // connected
-			console.info('database "'+database+'" is opened');
-		};
-		
-		request.onerror = function(e) {
-			state = 3; // failure
+		e.target.transaction.onerror = function(e) {
 			console.error(e.value);
 		};
 		
-		request.onupgradeneeded = function(e) {
+		for (i = 0; i < schema.tables.length; i++){
 			
-			console.info('upgrading database "'+database+'"');
+			var schemaTable = schema.tables[i];
 			
-			var db = e.target.result;
+			if (db.objectStoreNames.contains(schemaTable.name)){
+				db.deleteObjectStore(schemaTable.name);
+			}
 			
-			e.target.transaction.onerror = function(e) {
-				console.error(e.value);
-			};
-			
-			var tables = schema.tables;
-			
-			for (i = 0; i < tables.length; i++){
-				
-				var table = tables[i];
-				
-				if (db.objectStoreNames.contains(table.name)){
-					db.deleteObjectStore(table.name);
-				}
-				
-				var storage = db.createObjectStore(
-					table.name,
-					table.primaryKeys
-				);
-			}			
-		};
-		
-		return this;
+			var storage = db.createObjectStore(
+				schemaTable.name,
+				schemaTable.primaryKeys
+			);
+		}
 	};
 	
-	/**
-	 * Database storage, emulate IDBObjectStore
-	 * @see https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore
-	 **/
-	 
-	this.storage = {
+	this.get = function(key, callback) {
 		
-		table: null,
+		var __FUNCTION__ = this;
 		
-		open: function(table) {
-			
-			this.table = table;
-			
-			if (state == 1){
-				setTimeout(function() {
-					databaseInstance.storage.open(table);
-				}, 200);
-				return this;
-			}
-			
-			if (state != 2){
-				console.error('database is not opened. state = '+state);
-			}
-			
+		if (state == 1){
+			setTimeout(function() {
+				objectDatabase.get(key, callback);
+			}, 100);
 			return this;
-		},
-		
-		put: function(object, key) {
-			
-			if (state == 1){
-				setTimeout(function() {
-					databaseInstance.storage.put(object, key);
-				}, 200);
-				return this;
-			}
-			
-			var table = this.table;
-			var transaction = connection.transaction([table], 'readwrite');
-			var storage = transaction.objectStore(table);
-			
-			if (key == null){
-				// @todo key should be unique
-				//		 time() is always unique in all cases
-				key = (new Date()).getTime();
-			}
-			
-			var request = storage.put({
-				object: object,
-				timestamp: key
-			});
-			
-			request.onsuccess = function(e) {
-				console.info('successfully save object in "'+table+'"');
-			};
-			
-			request.onerror = function(e) {
-				console.error(e.value);
-			};
-			
-			return key;
-		},
-		
-		get: function(key) {
-			
-			var table = this.table;
-			var transaction = connection.transaction([table], 'readwrite');
-			var storage = transaction.objectStore(table);
-			var request = storage.get(key);
-			
-			request.onsuccess = function(e) {
-				console.log(request.result);
-			};
-			
-			request.onerror = function(e) {
-				console.error(e.value);
-			};
-		},
-		
-		getAll: function() {
-			
-			var table = this.table;
-			var transaction = connection.transaction([table], 'readonly');
-			var storage = transaction.objectStore(table);
-			
-			var keyRange = IDBKeyRange.lowerBound(0);
-			var cursorRequest = storage.openCursor(keyRange);
-			
-			cursorRequest.onsuccess = function(e) {
-				
-				var result = e.target.result;
-				
-				if (!!result == false){
-					return false;
-				}
-				
-				console.log(result.value);;
-				
-				result.continue();
-			};
-			
-			cursorRequest.onerror = function(e) {
-				console.error(e.value);
-			}
-		},
-		
-		/**
-		 * Delete a record in the table
-		 **/
-		
-		del: function(key) {
-			
-			var table = this.table;
-			var transaction = connection.transaction([table], 'readwrite');
-			var storage = transaction.objectStore(table);
-			var request = storage.delete(key);
-			
-			request.onsuccess = function(e) {
-				console.info('successfully delete '+key+' from "'+table+'"');
-				// @todo do something
-			};
-			
-			request.onerror = function(e) {
-				console.error(e.value);
-			};
-		},
-		
-		/**
-		 * Delete all record from table
-		 **/
-		
-		clear: function() {
-			
+		} else if (state == 0){
+			console.error('database is not connected');
+			return this;
 		}
+		
+		var transaction = connection.transaction([storage], 'readwrite');
+		var objectStore = transaction.objectStore(storage);
+		var request = objectStore.get(key);
+		
+		request.onsuccess = function(e) {
+			callback(request.result, null);
+		};
+		
+		request.onerror = function(e) {
+			callback(null, e.value);
+			console.error(e.value);
+		};
 	};
 	
 	return this;
