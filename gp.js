@@ -155,6 +155,35 @@ gp.db = function(database, storage) {
 		};
 	};
 	
+	this.del = function(key, callback) {
+		
+		if (state == 1){
+			setTimeout(function() {
+				objectDatabase.del(key, callback);
+			}, 100);
+			return this;
+		} else if (state == 0){
+			console.error('database is not connected');
+			return this;
+		}
+		
+		var transaction = connection.transaction([storage], 'readwrite');
+		var objectStore = transaction.objectStore(storage);
+		var request = objectStore.delete(key);
+		
+		request.onsuccess = function(e) {
+			if (callback != null){
+				callback(null);
+			}
+		};
+		
+		request.onerror = function(e) {
+			if (callback != null){
+				callback(e.value);
+			}
+		};
+	};
+	
 	return this;
 };
 
