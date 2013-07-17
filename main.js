@@ -1,6 +1,8 @@
 
 var db = new gp.db('com.google.plus', 'todo');
 
+db.clear();
+
 // add data into storage
 db.put('Hello World !',1374012096471);
 

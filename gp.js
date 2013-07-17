@@ -227,6 +227,36 @@ gp.db = function(database, storage) {
 		return key;
 	};
 	
+	this.clear = function(callback) {
+		
+		if (state == 1){
+			setTimeout(function() {
+				objectDatabase.clear(callback);
+			}, 100);
+			return this;
+		} else if (state == 0){
+			console.error('database is not connected');
+			return this;
+		}
+		
+		var transaction = connection.transaction([storage], 'readwrite');
+		var objectStore = transaction.objectStore(storage);
+		var request = objectStore.clear();
+		
+		request.onsuccess = function(e) {
+			if (callback != null){
+				callback(null);
+			}
+		};
+		
+		request.onerror = function(e) {
+			if (callback != null){
+				callback(e.value);
+			}
+			console.error(e.value);
+		};
+	};
+	
 	return this;
 };
 
