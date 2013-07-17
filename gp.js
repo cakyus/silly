@@ -181,7 +181,50 @@ gp.db = function(database, storage) {
 			if (callback != null){
 				callback(e.value);
 			}
+			console.error(e.value);
 		};
+	};
+	
+	this.put = function(object, key, callback) {
+		
+		if (state == 1){
+			setTimeout(function() {
+				objectDatabase.put(object, key, callback);
+			}, 100);
+			return this;
+		} else if (state == 0){
+			console.error('database is not connected');
+			return this;
+		}
+				
+		var transaction = connection.transaction([storage], 'readwrite');
+		var objectStore = transaction.objectStore(storage);
+		
+		if (key == null){
+			// @todo key should be unique
+			//		 time() is always unique in all cases
+			key = (new Date()).getTime();
+		}
+		
+		var request = objectStore.put({
+			object: object,
+			timestamp: key
+		});
+		
+		request.onsuccess = function(e) {
+			if (callback != null){
+				callback(key, null);
+			}
+		};
+		
+		request.onerror = function(e) {
+			if (callback != null){
+				callback(null, e.value);
+			}
+			console.error(e.value);
+		};
+		
+		return key;
 	};
 	
 	return this;
