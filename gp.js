@@ -92,8 +92,6 @@ gp.db = function(database, storage) {
 	
 	this.get = function(key, callback) {
 		
-		var __FUNCTION__ = this;
-		
 		if (state == 1){
 			setTimeout(function() {
 				objectDatabase.get(key, callback);
@@ -110,6 +108,45 @@ gp.db = function(database, storage) {
 		
 		request.onsuccess = function(e) {
 			callback(request.result, null);
+		};
+		
+		request.onerror = function(e) {
+			callback(null, e.value);
+			console.error(e.value);
+		};
+	};
+	
+	
+	this.fetch = function(callback) {
+		
+		if (state == 1){
+			setTimeout(function() {
+				objectDatabase.fetch(callback);
+			}, 100);
+			return this;
+		} else if (state == 0){
+			console.error('database is not connected');
+			return this;
+		}
+		
+		var transaction = connection.transaction([storage], 'readwrite');
+		var objectStore = transaction.objectStore(storage);
+		var keyRange = IDBKeyRange.lowerBound(0);
+		var request = objectStore.openCursor(keyRange);
+		
+		request.onsuccess = function(e) {
+				
+			var result = e.target.result;
+			
+			if (!!result == false){
+				return false;
+			}
+			
+			if (callback != null){
+				callback(result.value, null);
+			}
+
+			result.continue();
 		};
 		
 		request.onerror = function(e) {

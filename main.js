@@ -7,6 +7,6 @@ db.get(1374012096471, function(record, error) {
 });
 
 // enumerate all records
-//db.fetch(function(record, error) {
-	//console.log(record);
-//});
+db.fetch(function(record, error) {
+	console.log(record);
+});
