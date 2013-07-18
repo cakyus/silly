@@ -1,20 +1,28 @@
 
-var db = new gp.db('com.google.plus', 'todo');
+var db = new _db('com.google.plus', 'notes');
 
+var id = (new Date()).getTime();
+
+// delete all records
 db.clear();
 
 // add data into storage
-db.put('Hello World !',1374012096471);
+db.put({
+	name: 'John Smith',
+	message: 'Hello World !'
+}, id);
+
 
 // get a record from storage
-db.get(1374012096471, function(record, error) {
+db.get(id, function(record, error) {
 	console.log(record);
 });
 
 // delete a record
-db.del(1374012096471);
+db.del(id);
 
 // enumerate all records
 db.fetch(function(record, error) {
 	console.log(record);
 });
+

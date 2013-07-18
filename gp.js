@@ -8,13 +8,13 @@ gp.db = function(database, storage) {
 	 **/
 	 
 	var schema = {
-		version: 10,
-		tables: {
-			 name: 'todo'
+		version: 21,
+		tables: [{
+			 name: 'notes'
 			,primaryKeys: {
-				keyPath: 'timestamp'
+				keyPath: 'id'
 			}
-		}
+		}]
 	};
 	
 	/**
@@ -75,6 +75,7 @@ gp.db = function(database, storage) {
 			console.error(e.value);
 		};
 		
+				db.deleteObjectStore('todo');
 		for (i = 0; i < schema.tables.length; i++){
 			
 			var schemaTable = schema.tables[i];
@@ -201,16 +202,24 @@ gp.db = function(database, storage) {
 		var objectStore = transaction.objectStore(storage);
 		
 		if (key == null){
-			// @todo key should be unique
-			//		 time() is always unique in all cases
-			key = (new Date()).getTime();
+			// generate unique id
+			// eg. 13741587372306480
+			key = String((new Date()).getTime())
+				+ String(Math.floor(Math.random() * 8999) + 1000)
+				;
+			key = parseInt(key);
 		}
 		
-		var request = objectStore.put({
-			object: object,
-			timestamp: key
-		});
+		var data = {};
 		
+		for (i in object){
+			data[i] = object[i];
+		}
+		
+		data[objectStore.keyPath] = key;
+		
+		var request = objectStore.put(data);
+			
 		request.onsuccess = function(e) {
 			if (callback != null){
 				callback(key, null);
@@ -223,8 +232,6 @@ gp.db = function(database, storage) {
 			}
 			console.error(e.value);
 		};
-		
-		return key;
 	};
 	
 	this.clear = function(callback) {
