@@ -1,7 +1,5 @@
 
-var gp = {};
-
-gp.db = function(database, storage) {
+function _db(database, storage) {
 	
 	/**
 	 * Database schema
@@ -265,5 +263,5 @@ gp.db = function(database, storage) {
 	};
 	
 	return this;
-};
+}
 
