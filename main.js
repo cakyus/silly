@@ -1,5 +1,5 @@
 
-var db = new _db('com.google.plus', 'notes');
+var db = new _db('notes');
 
 var id = (new Date()).getTime();
 

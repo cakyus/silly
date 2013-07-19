@@ -1,25 +1,12 @@
 
-function _db(database, storage) {
-	
-	/**
-	 * Database schema
-	 **/
-	 
-	var schema = {
-		version: 21,
-		tables: [{
-			 name: 'notes'
-			,primaryKeys: {
-				keyPath: 'id'
-			}
-		}]
-	};
+function _db(storage) {
 	
 	/**
 	 * Connection handler
 	 **/
 	
 	var connection = null;
+	var database = location.host;
 	var objectDatabase = this;
 	
 	/**
@@ -31,64 +18,7 @@ function _db(database, storage) {
 	 **/
 	
 	var state = 0;
-	
-	// input validation
-	
-	if (database == null){
-		console.error('database must be specified');
-		return this;
-	} else if (storage == null){
-		console.error('table must be specified');
-		return this;
-	}
-	
-	// opening database
-	
-	console.info('connecting to database "'+database+'"');
-	
-	state = 1;
-	var request = indexedDB.open(
-		  database
-		, schema.version
-		);
-	
-	request.onsuccess = function(e) {
-		connection = request.result;
-		state = 2; // connected
-		console.info('database "'+database+'" is opened');
-	};
-	
-	request.onerror = function(e) {
-		state = 0; // failure
-		console.error(e.value);
-	};
-	
-	request.onupgradeneeded = function(e) {
 		
-		console.info('upgrading database "'+database+'"');
-		
-		var db = e.target.result;
-		
-		e.target.transaction.onerror = function(e) {
-			console.error(e.value);
-		};
-		
-				db.deleteObjectStore('todo');
-		for (i = 0; i < schema.tables.length; i++){
-			
-			var schemaTable = schema.tables[i];
-			
-			if (db.objectStoreNames.contains(schemaTable.name)){
-				db.deleteObjectStore(schemaTable.name);
-			}
-			
-			var storage = db.createObjectStore(
-				schemaTable.name,
-				schemaTable.primaryKeys
-			);
-		}
-	};
-	
 	this.get = function(key, callback) {
 		
 		if (state == 1){
@@ -216,7 +146,13 @@ function _db(database, storage) {
 		
 		data[objectStore.keyPath] = key;
 		
-		var request = objectStore.put(data);
+		try {		
+			var request = objectStore.put(data);
+		} catch(e) {
+			console.log(data);
+			console.error(e);
+			return false;
+		}
 			
 		request.onsuccess = function(e) {
 			if (callback != null){
@@ -261,6 +197,64 @@ function _db(database, storage) {
 			console.error(e.value);
 		};
 	};
+	
+	var init = function(version) {
+		
+		// input validation
+		if (storage == null){
+			console.error('table must be specified');
+			return false;
+		}
+		
+		// opening database			
+		state = 1;
+		
+		if (version == null){
+			console.info('connecting to database ..');
+			var request = indexedDB.open(database);
+		} else {
+			console.info('connecting to database version '+version);
+			var request = indexedDB.open(database, version);
+		}
+		
+		request.onsuccess = function(e) {
+			connection = request.result;
+			console.info(
+				 'database version '+connection.version+' is opened'
+				);
+			
+			if (connection.objectStoreNames.contains(storage) == false){
+				var newVersion = connection.version + 1;
+				connection.close();
+				init(newVersion);
+				return false;
+			}
+			
+			state = 2; // connected
+		};
+		
+		request.onerror = function(e) {
+			state = 0; // failure
+			console.error(e);
+		};
+		
+		request.onupgradeneeded = function(e) {
+			
+			console.info('upgrading database "'+database+'"');
+			
+			var db = e.target.result;
+			
+			e.target.transaction.onerror = function(e) {
+				console.error(e.value);
+			};
+			
+			if (db.objectStoreNames.contains(storage) == false){
+				db.createObjectStore(storage, {keyPath: 'id'});
+			}
+		};	
+	};
+	
+	init();
 	
 	return this;
 }
