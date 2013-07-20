@@ -130,12 +130,16 @@ function _db(storage) {
 		var objectStore = transaction.objectStore(storage);
 		
 		if (key == null){
-			// generate unique id
-			// eg. 13741587372306480
-			key = String((new Date()).getTime())
-				+ String(Math.floor(Math.random() * 8999) + 1000)
-				;
-			key = parseInt(key);
+			// get key from object
+			if (object.id == null){
+				// generate id, eg. 13741587372306480
+				key = String((new Date()).getTime())
+					+ String(Math.floor(Math.random() * 8999) + 1000)
+					;
+				key = parseInt(key);
+			} else {
+				key = object.id;
+			}
 		}
 		
 		var data = {};
