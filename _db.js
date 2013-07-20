@@ -145,6 +145,7 @@ function _db(storage) {
 		var data = {};
 		
 		for (i in object){
+			if (typeof(object[i]) == 'function'){ continue; }
 			data[i] = object[i];
 		}
 		

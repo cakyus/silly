@@ -25,4 +25,3 @@ db.del(id);
 db.fetch(function(record, error) {
 	console.log(record);
 });
-
